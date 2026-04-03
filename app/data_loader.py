@@ -49,9 +49,9 @@ def get_df() -> pd.DataFrame:
     return df
 
 
-def filter_reviews(df: pd.DataFrame, city: str, days: int) -> pd.DataFrame:
-    """Return reviews for *city* posted within the last *days* days."""
-    mask = (df["city"].str.lower() == city.lower()) & (df["total_days_ago"] <= days)
+def filter_reviews(df: pd.DataFrame, street: str, days: int) -> pd.DataFrame:
+    """Return reviews for *street* (branch) posted within the last *days* days."""
+    mask = (df["street"] == street) & (df["total_days_ago"] <= days)
     return df[mask].reset_index(drop=True)
 
 

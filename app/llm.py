@@ -33,7 +33,7 @@ def _get_conn() -> sqlite3.Connection:
         CREATE TABLE IF NOT EXISTS llm_logs (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp     TEXT    NOT NULL,
-            city          TEXT    NOT NULL,
+            branch        TEXT    NOT NULL,
             days_range    INTEGER NOT NULL,
             num_reviews   INTEGER NOT NULL,
             response_text TEXT    NOT NULL
@@ -44,12 +44,12 @@ def _get_conn() -> sqlite3.Connection:
     return conn
 
 
-def _log(city: str, days_range: int, num_reviews: int, response_text: str) -> None:
+def _log(branch: str, days_range: int, num_reviews: int, response_text: str) -> None:
     conn = _get_conn()
     conn.execute(
-        "INSERT INTO llm_logs (timestamp, city, days_range, num_reviews, response_text) "
+        "INSERT INTO llm_logs (timestamp, branch, days_range, num_reviews, response_text) "
         "VALUES (?, ?, ?, ?, ?)",
-        (datetime.utcnow().isoformat(), city, days_range, num_reviews, response_text),
+        (datetime.utcnow().isoformat(), branch, days_range, num_reviews, response_text),
     )
     conn.commit()
     conn.close()
@@ -80,14 +80,14 @@ def _format_reviews(df: pd.DataFrame) -> str:
 # Public API
 # ---------------------------------------------------------------------------
 
-def generate_insights(reviews_df: pd.DataFrame, city: str, days_range: int) -> str:
+def generate_insights(reviews_df: pd.DataFrame, branch: str, days_range: int) -> str:
     """
     Call the Claude API and return the structured analysis.
 
     Parameters
     ----------
-    reviews_df : DataFrame already filtered to the target city / date window.
-    city       : Human-readable city name (used for logging only).
+    reviews_df : DataFrame already filtered to the target branch / date window.
+    branch     : Human-readable branch address (used for logging only).
     days_range : Day window used to filter reviews (used for logging only).
 
     Returns
@@ -95,12 +95,12 @@ def generate_insights(reviews_df: pd.DataFrame, city: str, days_range: int) -> s
     str  — The model's response text, or an error message.
     """
     if reviews_df.empty:
-        return "No reviews found for the selected city and time range."
+        return "No reviews found for the selected branch and time range."
 
     system_prompt = _load_system_prompt()
     formatted = _format_reviews(reviews_df)
     user_message = (
-        f"Here are the most recent customer reviews for the {city} location:\n\n"
+        f"Here are the most recent customer reviews for the {branch} branch:\n\n"
         f"{formatted}"
     )
 
@@ -125,7 +125,7 @@ def generate_insights(reviews_df: pd.DataFrame, city: str, days_range: int) -> s
         return "The model returned an empty response. Please try again."
 
     _log(
-        city=city,
+        branch=branch,
         days_range=days_range,
         num_reviews=min(len(reviews_df), 20),
         response_text=response_text,

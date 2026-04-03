@@ -1,4 +1,6 @@
+import re
 import sys
+from datetime import date
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -28,6 +30,52 @@ st.title("🍔 McDonald's Social Media Command Centre")
 
 df = data_loader.get_df()
 all_cities = sorted(df["city"].dropna().unique().tolist())
+all_streets = sorted(df["street"].dropna().unique().tolist())
+
+
+def _build_health_table(df: pd.DataFrame) -> pd.DataFrame:
+    summary = (
+        df.groupby("street", sort=False)
+        .agg(City=("city", "first"), avg_rating=("rating", "mean"), total_reviews=("rating", "count"))
+        .reset_index()
+        .rename(columns={"street": "Branch", "total_reviews": "Total Reviews"})
+    )
+
+    recent = df[df["total_days_ago"] <= 30].groupby("street")["rating"].mean()
+    prev = df[(df["total_days_ago"] > 30) & (df["total_days_ago"] <= 60)].groupby("street")["rating"].mean()
+
+    def _trend(street):
+        r, p = recent.get(street), prev.get(street)
+        if r is None or p is None:
+            return "➡️"
+        diff = r - p
+        return "⬆️" if diff > 0.1 else "⬇️" if diff < -0.1 else "➡️"
+
+    def _status(avg):
+        if avg < 2.5:
+            return "🔴 Needs Attention"
+        if avg <= 3.5:
+            return "🟡 Monitor"
+        return "🟢 Healthy"
+
+    summary["Avg Rating"] = summary["avg_rating"].round(2)
+    summary["Status"] = summary["avg_rating"].apply(_status)
+    summary["Trend"] = summary["Branch"].apply(_trend)
+
+    return (
+        summary[["Branch", "City", "Avg Rating", "Total Reviews", "Status", "Trend"]]
+        .sort_values("Avg Rating")
+        .reset_index(drop=True)
+    )
+
+def _extract_briefing(result: str) -> str:
+    """Return the text under the STAFF BRIEFING header, or empty string if not found."""
+    idx = result.upper().find("STAFF BRIEFING")
+    if idx == -1:
+        return ""
+    after_header = result[idx + len("STAFF BRIEFING"):]
+    return after_header.strip()
+
 
 # ---------------------------------------------------------------------------
 # Tabs
@@ -158,11 +206,38 @@ with tab1:
 # ===========================================================================
 
 with tab2:
+    # -----------------------------------------------------------------------
+    # Branch Health Overview
+    # The table must render (and row-click detection must run) BEFORE the
+    # sidebar selectbox, so that session_state["copilot_branch"] is updated
+    # in time for the selectbox to reflect the clicked branch.
+    # -----------------------------------------------------------------------
+    st.subheader("Branch Health Overview")
+    st.caption("Click any row to load that branch in the Co-Pilot below.")
+
+    health_df = _build_health_table(df)
+    health_event = st.dataframe(
+        health_df,
+        use_container_width=True,
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row",
+    )
+
+    if health_event.selection.rows:
+        clicked_street = health_df.iloc[health_event.selection.rows[0]]["Branch"]
+        st.session_state["copilot_branch"] = clicked_street
+
+    st.divider()
+
+    # -----------------------------------------------------------------------
+    # Co-Pilot Filters (sidebar)
+    # -----------------------------------------------------------------------
     st.sidebar.header("Co-Pilot Filters")
-    selected_city = st.sidebar.selectbox(
-        "City",
-        options=all_cities,
-        key="copilot_city",
+    selected_branch = st.sidebar.selectbox(
+        "Branch",
+        options=all_streets,
+        key="copilot_branch",
     )
     days_range = st.sidebar.slider(
         "Time range (days)",
@@ -173,10 +248,10 @@ with tab2:
         key="copilot_days",
     )
 
-    filtered = data_loader.filter_reviews(df, selected_city, days_range)
+    filtered = data_loader.filter_reviews(df, selected_branch, days_range)
     num_reviews = len(filtered)
 
-    st.subheader(f"AI Manager Co-Pilot — {selected_city}")
+    st.subheader(f"AI Manager Co-Pilot — {selected_branch}")
     st.caption(
         f"Showing reviews from the last **{days_range} days** · "
         f"**{num_reviews}** matching review{'s' if num_reviews != 1 else ''} found"
@@ -184,15 +259,31 @@ with tab2:
 
     if num_reviews == 0:
         st.warning(
-            f"No reviews found for **{selected_city}** in the last {days_range} days. "
-            "Try a different city or extend the time range."
+            f"No reviews found for **{selected_branch}** in the last {days_range} days. "
+            "Try a different branch or extend the time range."
         )
     else:
         if st.button("Generate Insights", type="primary"):
             with st.spinner("Analysing reviews with Claude..."):
-                result = llm.generate_insights(filtered, selected_city, days_range)
+                result = llm.generate_insights(filtered, selected_branch, days_range)
             st.markdown("---")
             st.markdown(result)
+
+            briefing_text = _extract_briefing(result)
+            if briefing_text:
+                st.divider()
+                st.subheader("Staff Briefing")
+                st.code(briefing_text, language=None)
+
+                safe_name = re.sub(r"[^\w\-]", "_", selected_branch)
+                filename = f"briefing_{safe_name}_{date.today()}.txt"
+                st.download_button(
+                    label="Download Staff Briefing (.txt)",
+                    data=briefing_text,
+                    file_name=filename,
+                    mime="text/plain",
+                )
+
             st.divider()
 
         st.subheader("Reviews Used")
