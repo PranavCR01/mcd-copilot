@@ -10,6 +10,12 @@
 
 ---
 
+## Live Demo
+
+**[https://mcd-command-centre.streamlit.app](https://mcd-command-centre.streamlit.app)**
+
+---
+
 ## 📋 Project Overview
 
 McDonald's branch managers receive hundreds of customer reviews across social media and review platforms every week, but lack a fast, structured way to extract actionable intelligence from that feedback.
