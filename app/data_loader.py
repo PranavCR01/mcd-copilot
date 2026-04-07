@@ -11,6 +11,10 @@ def get_df() -> pd.DataFrame:
     csv_file = next(Path(path).glob("*.csv"))
     df = pd.read_csv(csv_file, encoding="latin-1")
 
+    # Strip all non-ASCII characters from the review column
+    if "review" in df.columns:
+        df["review"] = df["review"].astype(str).str.replace(r"[^\x00-\x7F]+", "", regex=True)
+
     # Extract numeric rating from strings like "1 star" / "4 stars"
     df["rating"] = (
         df["rating"].astype(str).str.extract(r"(\d+)")[0].astype("Int64")

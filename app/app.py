@@ -5,7 +5,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -364,6 +363,20 @@ def _inject_css() -> None:
         font-style: italic;
     }}
 
+    /* ── Selectbox: selected value text inside the sidebar input box ─────── */
+    section[data-testid="stSidebar"] [data-baseweb="select"] span,
+    section[data-testid="stSidebar"] [data-baseweb="select"] div,
+    section[data-testid="stSidebar"] [data-baseweb="select"] input {{
+        color: #333333 !important;
+    }}
+
+    /* ── Selectbox dropdown (renders outside sidebar, white bg) ─────────── */
+    [data-baseweb="popover"] [role="option"],
+    [data-baseweb="popover"] li,
+    [data-baseweb="menu"] [role="option"] {{
+        color: {MCD_DARK} !important;
+    }}
+
     /* Reviews Used table header */
     .mcd-table-header {{
         font-weight: 700;
@@ -563,8 +576,10 @@ def _render_insights_cards(sections: dict) -> None:
     </div>
     """, unsafe_allow_html=True)
 
-    # Staff Briefing — full width
-    briefing_escaped = briefing_text.replace("\n", "<br>")
+    # Staff Briefing — full width; convert markdown bold/italic to HTML
+    briefing_html = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", briefing_text)
+    briefing_html = re.sub(r"\*(.+?)\*", r"<em>\1</em>", briefing_html)
+    briefing_escaped = briefing_html.replace("\n", "<br>")
     st.markdown(f"""
     <div class="mcd-insight-card mcd-card-briefing" style="margin-bottom:16px;">
         <div class="mcd-card-header">
@@ -638,25 +653,26 @@ with tab1:
             plt.close(fig)
 
         with row1_right:
-            st.markdown('<p class="mcd-chart-title">Review Length by Rating</p>', unsafe_allow_html=True)
+            st.markdown('<p class="mcd-chart-title">Top 10 Best Performing Branches</p>', unsafe_allow_html=True)
+            top_branches = (
+                dash_df.groupby("street")
+                .agg(avg_rating=("rating", "mean"), review_count=("rating", "count"), city=("city", "first"))
+                .reset_index()
+                .query("review_count >= 10")
+                .nlargest(10, "avg_rating")
+                .sort_values("avg_rating", ascending=True)
+            )
+            top_branches["label"] = top_branches["street"].str[:28] + "  (" + top_branches["city"] + ")"
             fig, ax = plt.subplots(figsize=(5, 3.5))
             _apply_chart_theme(fig, ax)
-            groups = [
-                dash_df.loc[dash_df["rating"] == r, "review_length"].dropna().tolist()
-                for r in sorted(dash_df["rating"].unique())
-            ]
-            labels = [str(r) for r in sorted(dash_df["rating"].unique())]
-            ax.boxplot(
-                groups, labels=labels, patch_artist=True,
-                boxprops=dict(facecolor=MCD_YELLOW, color=MCD_RED),
-                medianprops=dict(color=MCD_RED, linewidth=2),
-                whiskerprops=dict(color=MCD_DARK),
-                capprops=dict(color=MCD_DARK),
-                flierprops=dict(marker="o", color=MCD_RED, markersize=2, alpha=0.4),
-            )
-            ax.set_xlabel("Rating")
-            ax.set_ylabel("Review Length (chars)")
-            ax.set_title("Review Length Distribution per Rating")
+            colors = [MCD_YELLOW if v >= 4.5 else MCD_RED for v in top_branches["avg_rating"]]
+            bars = ax.barh(top_branches["label"], top_branches["avg_rating"], color=colors, edgecolor="white")
+            ax.set_xlim(0, 5)
+            ax.axvline(x=3.5, color=MCD_DARK, linestyle="--", linewidth=1, alpha=0.5)
+            for bar, val in zip(bars, top_branches["avg_rating"]):
+                ax.text(val + 0.05, bar.get_y() + bar.get_height() / 2, f"{val:.2f}", va="center", fontsize=8, color=MCD_DARK)
+            ax.set_xlabel("Avg Rating")
+            ax.set_title("Top 10 Branches by Avg Rating (min. 10 reviews)")
             fig.tight_layout()
             st.pyplot(fig)
             plt.close(fig)
@@ -690,24 +706,25 @@ with tab1:
             plt.close(fig)
 
         with row2_right:
-            st.markdown('<p class="mcd-chart-title">Feature Correlation Heatmap</p>', unsafe_allow_html=True)
-            corr_cols = ["rating", "rating_count", "review_length", "total_days_ago"]
-            available = [c for c in corr_cols if c in dash_df.columns]
-            corr = dash_df[available].corr()
+            st.markdown('<p class="mcd-chart-title">Worst Performing Branches</p>', unsafe_allow_html=True)
+            branch_avg = (
+                dash_df.groupby("street")
+                .agg(avg_rating=("rating", "mean"), city=("city", "first"))
+                .reset_index()
+                .nsmallest(5, "avg_rating")
+                .sort_values("avg_rating", ascending=True)
+            )
+            branch_avg["label"] = branch_avg["street"].str[:28] + "  (" + branch_avg["city"] + ")"
             fig, ax = plt.subplots(figsize=(5, 3.5))
             _apply_chart_theme(fig, ax)
-            sns.heatmap(
-                corr,
-                annot=True,
-                fmt=".2f",
-                cmap="RdYlGn",
-                linewidths=0.5,
-                ax=ax,
-                vmin=-1,
-                vmax=1,
-                linecolor=MCD_LIGHT,
-            )
-            ax.set_title("Feature Correlations")
+            colors = [MCD_RED if v < 2.5 else MCD_YELLOW for v in branch_avg["avg_rating"]]
+            bars = ax.barh(branch_avg["label"], branch_avg["avg_rating"], color=colors, edgecolor="white")
+            ax.set_xlim(0, 5)
+            ax.axvline(x=2.5, color=MCD_DARK, linestyle="--", linewidth=1, alpha=0.5)
+            for bar, val in zip(bars, branch_avg["avg_rating"]):
+                ax.text(val + 0.05, bar.get_y() + bar.get_height() / 2, f"{val:.2f}", va="center", fontsize=8, color=MCD_DARK)
+            ax.set_xlabel("Avg Rating")
+            ax.set_title("Bottom 5 Branches by Avg Rating")
             fig.tight_layout()
             st.pyplot(fig)
             plt.close(fig)
@@ -802,9 +819,10 @@ with tab2:
             if briefing_text:
                 safe_name = re.sub(r"[^\w\-]", "_", selected_branch)
                 filename  = f"briefing_{safe_name}_{date.today()}.txt"
+                clean_briefing = re.sub(r"\*+", "", briefing_text)
                 st.download_button(
                     label="⬇️  Download Staff Briefing (.txt)",
-                    data=briefing_text,
+                    data=clean_briefing,
                     file_name=filename,
                     mime="text/plain",
                 )
@@ -813,13 +831,13 @@ with tab2:
 
         # ── Reviews preview ──────────────────────────────────────────────
         st.markdown('<p class="mcd-table-header">Reviews Used for Analysis</p>', unsafe_allow_html=True)
-        display_cols = [c for c in ["rating", "review", "total_days_ago", "review_length"]
-                        if c in filtered.columns]
+        display_cols = [c for c in ["rating", "review"] if c in filtered.columns]
         preview = (
-            filtered[display_cols]
-            .sort_values("total_days_ago", ascending=True)
+            filtered.sort_values("total_days_ago", ascending=True)
+            [display_cols]
             .head(50)
             .reset_index(drop=True)
+            .rename(columns={"rating": "Rating", "review": "Review"})
         )
         preview.index += 1
         st.dataframe(preview, use_container_width=True)
