@@ -102,21 +102,21 @@ The app will open in your browser at `http://localhost:8501`.
 
 ```
 mcdo-copilot/
-│
 ├── app/
-│   ├── app.py            # Streamlit UI and page logic
-│   ├── data_loader.py    # Kaggle dataset download and preprocessing
-│   └── llm.py            # Anthropic API integration and SQLite logging
-│
+│   ├── app.py              # Streamlit UI, two tabs, charts, Co-Pilot
+│   ├── data_loader.py      # Kaggle dataset download, cleaning, caching
+│   └── llm.py              # Anthropic Claude API integration, SQLite logging
 ├── prompts/
-│   └── manager_copilot.txt   # System prompt for the AI Co-Pilot
-│
+│   └── manager_copilot.txt # System prompt for AI Co-Pilot
 ├── docs/
-│   ├── use-cases.md      # Use case documentation
-│   └── SAFETY.md         # AI safety and responsible use notes
-│
-├── .env                  # API keys (not committed)
+│   ├── architecture.md     # System architecture description
+│   ├── use-cases.md        # Use case documentation
+│   ├── SAFETY.md           # Safety and privacy notes
+│   └── TELEMETRY.md        # LLM call logging and observability
+├── .env.example            # API key template
 ├── .gitignore
+├── CLAUDE.md               # Context for AI-assisted development
+├── INSTALL.md              # Setup and run instructions
 ├── requirements.txt
 └── README.md
 ```
@@ -127,7 +127,7 @@ mcdo-copilot/
 
 | Name | Role |
 |---|---|
-| Pranav C | — |
+| Pranav C | AI integration, backend architecture, data pipeline, visualizations |
 | Jeet T | — |
 | Ashish G | — |
 
