@@ -133,7 +133,7 @@ mcdo-copilot/
 
 | Name | Role |
 |---|---|
-| Pranav C | AI integration, backend architecture, data pipeline, visualizations |
+| Pranav C | AI integration, backend architecture, data pipeline, visualizations, streamlit deployment |
 | Jeet T | — |
 | Ashish G | — |
 
