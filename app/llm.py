@@ -1,3 +1,4 @@
+import re
 import sqlite3
 import textwrap
 from datetime import datetime
@@ -53,6 +54,18 @@ def _log(branch: str, days_range: int, num_reviews: int, response_text: str) -> 
     )
     conn.commit()
     conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Output parsing helpers
+# ---------------------------------------------------------------------------
+
+def _extract_briefing(result: str) -> str:
+    """Return the text that follows the STAFF BRIEFING header, or '' if absent."""
+    match = re.search(r"(?mi)^STAFF BRIEFING\s*$", result)
+    if not match:
+        return ""
+    return result[match.end():].strip()
 
 
 # ---------------------------------------------------------------------------

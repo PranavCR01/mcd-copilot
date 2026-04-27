@@ -729,6 +729,20 @@ with tab1:
             st.pyplot(fig)
             plt.close(fig)
 
+# ---------------------------------------------------------------------------
+# Derive Co-Pilot branch list from dashboard city filter
+# ---------------------------------------------------------------------------
+
+copilot_streets = (
+    sorted(df[df["city"].isin(selected_cities)]["street"].dropna().unique().tolist())
+    if selected_cities
+    else all_streets
+) or all_streets
+
+# If the currently-remembered branch is no longer in the filtered list, reset it.
+if st.session_state.get("copilot_branch") not in copilot_streets:
+    st.session_state["copilot_branch"] = copilot_streets[0]
+
 # ===========================================================================
 # TAB 2 — AI Manager Co-Pilot
 # ===========================================================================
@@ -764,9 +778,11 @@ with tab2:
 
     # ── Co-Pilot Filters (sidebar) ───────────────────────────────────────
     st.sidebar.markdown('<div class="mcd-sidebar-section">🤖 Co-Pilot Filters</div>', unsafe_allow_html=True)
+    if len(copilot_streets) < len(all_streets):
+        st.sidebar.caption(f"Showing {len(copilot_streets)} branches from {len(selected_cities)} selected city/cities.")
     selected_branch = st.sidebar.selectbox(
         "Branch",
-        options=all_streets,
+        options=copilot_streets,
         key="copilot_branch",
     )
     days_range = st.sidebar.slider(
