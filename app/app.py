@@ -31,7 +31,7 @@ st.set_page_config(
     page_title="McDonald's Command Centre",
     page_icon="🍔",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ---------------------------------------------------------------------------
@@ -174,28 +174,6 @@ def _inject_css() -> None:
         color: {MCD_YELLOW};
         letter-spacing: 0.02em;
     }}
-    .mcd-sidebar-section {{
-        font-size: 0.73rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: {MCD_YELLOW};
-        margin: 20px 0 8px 0;
-        padding-bottom: 6px;
-        border-bottom: 1px solid rgba(255,199,44,0.25);
-    }}
-    .mcd-active-branch {{
-        background: {MCD_RED};
-        color: white;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 0.82rem;
-        font-weight: 600;
-        margin-top: 10px;
-        word-break: break-word;
-        line-height: 1.4;
-    }}
-
     /* KPI cards */
     .mcd-kpi {{
         background: {MCD_CARD};
@@ -363,14 +341,7 @@ def _inject_css() -> None:
         font-style: italic;
     }}
 
-    /* ── Selectbox: selected value text inside the sidebar input box ─────── */
-    section[data-testid="stSidebar"] [data-baseweb="select"] span,
-    section[data-testid="stSidebar"] [data-baseweb="select"] div,
-    section[data-testid="stSidebar"] [data-baseweb="select"] input {{
-        color: #333333 !important;
-    }}
-
-    /* ── Selectbox dropdown (renders outside sidebar, white bg) ─────────── */
+    /* ── Selectbox dropdown options ─────────────────────────────────────── */
     [data-baseweb="popover"] [role="option"],
     [data-baseweb="popover"] li,
     [data-baseweb="menu"] [role="option"] {{
@@ -602,9 +573,7 @@ tab1, tab2 = st.tabs(["📊  Review Dashboard", "🤖  AI Manager Co-Pilot"])
 # ===========================================================================
 
 with tab1:
-    # Sidebar — Dashboard filters
-    st.sidebar.markdown('<div class="mcd-sidebar-section">📊 Dashboard Filters</div>', unsafe_allow_html=True)
-    selected_cities = st.sidebar.multiselect(
+    selected_cities = st.multiselect(
         "Filter by city",
         options=all_cities,
         default=all_cities,
@@ -748,9 +717,35 @@ if st.session_state.get("copilot_branch") not in copilot_streets:
 # ===========================================================================
 
 with tab2:
+    # ── Co-Pilot Filters ────────────────────────────────────────────────
+    f_left, f_right = st.columns([3, 2])
+    with f_left:
+        selected_branch = st.selectbox(
+            "Branch",
+            options=copilot_streets,
+            key="copilot_branch",
+        )
+        if len(copilot_streets) < len(all_streets):
+            st.caption(
+                f"Showing branches from {len(selected_cities)} selected "
+                "city/cities. Change the Dashboard filter to see more."
+            )
+    with f_right:
+        days_range = st.slider(
+            "Time range (days)",
+            min_value=30,
+            max_value=365,
+            value=90,
+            step=1,
+            key="copilot_days",
+        )
+
+    st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
+
     # ── Branch Health Overview ───────────────────────────────────────────
-    # IMPORTANT: table + row-click detection must run BEFORE the sidebar
-    # selectbox so session_state["copilot_branch"] is set in time.
+    # The selectbox above renders before this click handler runs.
+    # A row click sets session_state["copilot_branch"] here and triggers a
+    # second rerun, at which point the selectbox reflects the clicked branch.
     st.markdown("""
     <div class="mcd-section-header">
         <span class="mcd-section-icon">📊</span>
@@ -775,28 +770,6 @@ with tab2:
         st.session_state["copilot_branch"] = clicked_street
 
     st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
-
-    # ── Co-Pilot Filters (sidebar) ───────────────────────────────────────
-    st.sidebar.markdown('<div class="mcd-sidebar-section">🤖 Co-Pilot Filters</div>', unsafe_allow_html=True)
-    if len(copilot_streets) < len(all_streets):
-        st.sidebar.caption(f"Showing {len(copilot_streets)} branches from {len(selected_cities)} selected city/cities.")
-    selected_branch = st.sidebar.selectbox(
-        "Branch",
-        options=copilot_streets,
-        key="copilot_branch",
-    )
-    days_range = st.sidebar.slider(
-        "Time range (days)",
-        min_value=30,
-        max_value=365,
-        value=90,
-        step=1,
-        key="copilot_days",
-    )
-    st.sidebar.markdown(
-        f'<div class="mcd-active-branch">📍 {selected_branch}</div>',
-        unsafe_allow_html=True,
-    )
 
     # ── Co-Pilot main area ───────────────────────────────────────────────
     filtered    = data_loader.filter_reviews(df, selected_branch, days_range)
