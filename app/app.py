@@ -767,7 +767,9 @@ with tab2:
 
     if health_event.selection.rows:
         clicked_street = health_df.iloc[health_event.selection.rows[0]]["Branch"]
-        st.session_state["copilot_branch"] = clicked_street
+        if st.session_state.get("copilot_branch") != clicked_street:
+            st.session_state["copilot_branch"] = clicked_street
+            st.rerun()
 
     st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
 
