@@ -365,11 +365,12 @@ _inject_css()
 
 st.markdown("""
 <style>
-@media (prefers-color-scheme: dark) {
-    [data-baseweb="select"] * { color: #ffffff !important; }
-    [data-baseweb="popover"] * { color: #ffffff !important; }
-    [data-baseweb="menu"] * { color: #ffffff !important; }
-}
+[data-baseweb="select"] input { color: #ffffff !important; }
+[data-baseweb="popover"] li { color: #000000 !important; background-color: #ffffff !important; }
+[data-baseweb="menu"] ul li { color: #000000 !important; background-color: #ffffff !important; }
+[data-baseweb="option"] { color: #000000 !important; background-color: #ffffff !important; }
+div[role="option"] { color: #000000 !important; background-color: #ffffff !important; }
+div[role="listbox"] * { color: #000000 !important; background-color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
