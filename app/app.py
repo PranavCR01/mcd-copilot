@@ -406,6 +406,9 @@ if "copilot_branch" not in st.session_state:
 if "health_row" not in st.session_state:
     st.session_state["health_row"] = None
 
+if "last_selected_cities" not in st.session_state:
+    st.session_state["last_selected_cities"] = None
+
 # ---------------------------------------------------------------------------
 # Sidebar — logo (rendered once, before tabs)
 # ---------------------------------------------------------------------------
@@ -739,6 +742,12 @@ if st.session_state.get("copilot_branch") not in copilot_streets:
 # ===========================================================================
 
 with tab2:
+    # ── City filter change detection ─────────────────────────────────────
+    if selected_cities != st.session_state.get("last_selected_cities"):
+        st.session_state["health_row"]           = None
+        st.session_state["copilot_branch"]       = copilot_streets[0] if copilot_streets else ""
+        st.session_state["last_selected_cities"] = selected_cities
+
     # ── Branch Health Overview ───────────────────────────────────────────
     # Must render BEFORE the selectbox so that session state is updated
     # from a row click before the widget is instantiated.
