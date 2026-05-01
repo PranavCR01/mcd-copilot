@@ -739,8 +739,6 @@ if st.session_state.get("copilot_branch") not in copilot_streets:
 # ===========================================================================
 
 with tab2:
-    st.info("💡 Tip: The branch list below reflects your city filter from the Dashboard tab. Select more cities there to see more branches here.")
-
     # ── Branch Health Overview ───────────────────────────────────────────
     # Must render BEFORE the selectbox so that session state is updated
     # from a row click before the widget is instantiated.
@@ -781,6 +779,8 @@ with tab2:
     # session state was just written above in the same script run.
     current_branch = st.session_state.get("copilot_branch", copilot_streets[0] if copilot_streets else "")
     branch_index   = copilot_streets.index(current_branch) if current_branch in copilot_streets else 0
+
+    st.info("💡 Tip: The branch list below reflects your city filter from the Dashboard tab. Select more cities there to see more branches here.")
 
     f_left, f_right = st.columns([3, 2])
     with f_left:
