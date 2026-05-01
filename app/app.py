@@ -727,7 +727,37 @@ if st.session_state.get("copilot_branch") not in copilot_streets:
 # ===========================================================================
 
 with tab2:
+    # ── Branch Health Overview ───────────────────────────────────────────
+    # Rendered BEFORE the selectbox so that a row click can write to
+    # session_state["copilot_branch"] before the widget is instantiated.
+    st.markdown("""
+    <div class="mcd-section-header">
+        <span class="mcd-section-icon">📊</span>
+        <div>
+            <div class="mcd-section-title">Branch Health Overview</div>
+            <div class="mcd-section-sub">Click a row to load that branch in the Co-Pilot below.</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    health_df    = _build_health_table(df)
+    health_event = st.dataframe(
+        health_df,
+        use_container_width=True,
+        hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row",
+    )
+
+    if health_event.selection.rows:
+        clicked_street = health_df.iloc[health_event.selection.rows[0]]["Branch"]
+        st.session_state["copilot_branch"] = clicked_street
+
+    st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
+
     # ── Co-Pilot Filters ────────────────────────────────────────────────
+    # selectbox renders AFTER the row-click handler above, so session_state
+    # is already updated when Streamlit instantiates the widget.
     f_left, f_right = st.columns([3, 2])
     with f_left:
         selected_branch = st.selectbox(
@@ -749,27 +779,6 @@ with tab2:
             step=1,
             key="copilot_days",
         )
-
-    st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
-
-    # ── Branch Health Overview ───────────────────────────────────────────
-    st.markdown("""
-    <div class="mcd-section-header">
-        <span class="mcd-section-icon">📊</span>
-        <div>
-            <div class="mcd-section-title">Branch Health Overview</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.caption("👆 Use the branch dropdown below to select a branch and generate insights.")
-
-    health_df = _build_health_table(df)
-    st.dataframe(
-        health_df,
-        use_container_width=True,
-        hide_index=True,
-    )
 
     st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
 
