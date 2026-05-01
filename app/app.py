@@ -403,8 +403,8 @@ all_streets = sorted(df["street"].dropna().unique().tolist())
 if "copilot_branch" not in st.session_state:
     st.session_state["copilot_branch"] = all_streets[0] if all_streets else ""
 
-if "health_selection" not in st.session_state:
-    st.session_state["health_selection"] = None
+if "health_row" not in st.session_state:
+    st.session_state["health_row"] = None
 
 # ---------------------------------------------------------------------------
 # Sidebar — logo (rendered once, before tabs)
@@ -729,9 +729,10 @@ copilot_streets = (
     else all_streets
 ) or all_streets
 
-# If the currently-remembered branch is no longer in the filtered list, reset it.
+# Scenario 5: city filter changed and the remembered branch is no longer present.
 if st.session_state.get("copilot_branch") not in copilot_streets:
     st.session_state["copilot_branch"] = copilot_streets[0]
+    st.session_state["health_row"] = None  # stale row index no longer valid
 
 # ===========================================================================
 # TAB 2 — AI Manager Co-Pilot
@@ -739,8 +740,8 @@ if st.session_state.get("copilot_branch") not in copilot_streets:
 
 with tab2:
     # ── Branch Health Overview ───────────────────────────────────────────
-    # Rendered BEFORE the selectbox so that a row click can write to
-    # session_state["copilot_branch"] before the widget is instantiated.
+    # Must render BEFORE the selectbox so that session state is updated
+    # from a row click before the widget is instantiated.
     st.markdown("""
     <div class="mcd-section-header">
         <span class="mcd-section-icon">📊</span>
@@ -758,24 +759,39 @@ with tab2:
         hide_index=True,
         on_select="rerun",
         selection_mode="single-row",
+        key="health_table",
     )
 
+    # Scenario 2: only act when the selected row has changed.
+    # Comparing against health_row means a persisted table selection does NOT
+    # override a manual dropdown change on an unrelated rerun (Scenario 4),
+    # and tab switches that preserve the old selection also do nothing (Scenario 3).
     if health_event.selection.rows:
-        clicked_street = health_df.iloc[health_event.selection.rows[0]]["Branch"]
-        st.session_state["copilot_branch"] = clicked_street
+        new_row = health_event.selection.rows[0]
+        if new_row != st.session_state.get("health_row"):
+            st.session_state["health_row"]     = new_row
+            st.session_state["copilot_branch"] = health_df.iloc[new_row]["Branch"]
 
     st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
 
     # ── Co-Pilot Filters ────────────────────────────────────────────────
-    # selectbox renders AFTER the row-click handler above, so session_state
-    # is already updated when Streamlit instantiates the widget.
+    # Use index= instead of key= to avoid a StreamlitAPIException when
+    # session state was just written above in the same script run.
+    current_branch = st.session_state.get("copilot_branch", copilot_streets[0] if copilot_streets else "")
+    branch_index   = copilot_streets.index(current_branch) if current_branch in copilot_streets else 0
+
     f_left, f_right = st.columns([3, 2])
     with f_left:
         selected_branch = st.selectbox(
             "Branch",
             options=copilot_streets,
-            key="copilot_branch",
+            index=branch_index,
         )
+        # Scenario 4: manual dropdown change → keep session state in sync.
+        # Does not touch health_row, so the table stays visually selected but
+        # the changed-row guard above will suppress any future override.
+        if selected_branch != st.session_state.get("copilot_branch"):
+            st.session_state["copilot_branch"] = selected_branch
         if len(copilot_streets) < len(all_streets):
             st.caption(
                 f"Showing branches from {len(selected_cities)} selected "
