@@ -739,6 +739,8 @@ if st.session_state.get("copilot_branch") not in copilot_streets:
 # ===========================================================================
 
 with tab2:
+    st.info("💡 Tip: The branch list below reflects your city filter from the Dashboard tab. Select more cities there to see more branches here.")
+
     # ── Branch Health Overview ───────────────────────────────────────────
     # Must render BEFORE the selectbox so that session state is updated
     # from a row click before the widget is instantiated.
@@ -792,11 +794,14 @@ with tab2:
         # the changed-row guard above will suppress any future override.
         if selected_branch != st.session_state.get("copilot_branch"):
             st.session_state["copilot_branch"] = selected_branch
-        if len(copilot_streets) < len(all_streets):
-            st.caption(
-                f"Showing branches from {len(selected_cities)} selected "
-                "city/cities. Change the Dashboard filter to see more."
-            )
+        num_branches = len(copilot_streets)
+        num_cities   = len(selected_cities) if selected_cities else len(all_cities)
+        if num_cities == len(all_cities):
+            st.caption("Showing all branches. Filter by city in the Dashboard tab to narrow this list.")
+        elif num_cities == 1 and num_branches == 1:
+            st.caption(f"Showing 1 branch from {selected_cities[0]}. Select more cities in the Dashboard to see more branches.")
+        else:
+            st.caption(f"Showing {num_branches} branches from {num_cities} cities. Change city filter in Dashboard to update this list.")
     with f_right:
         days_range = st.slider(
             "Time range (days)",
