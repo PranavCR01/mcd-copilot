@@ -397,6 +397,16 @@ all_cities  = sorted(df["city"].dropna().unique().tolist())
 all_streets = sorted(df["street"].dropna().unique().tolist())
 
 # ---------------------------------------------------------------------------
+# Session state initialisation (must run before any widget is instantiated)
+# ---------------------------------------------------------------------------
+
+if "copilot_branch" not in st.session_state:
+    st.session_state["copilot_branch"] = all_streets[0] if all_streets else ""
+
+if "health_selection" not in st.session_state:
+    st.session_state["health_selection"] = None
+
+# ---------------------------------------------------------------------------
 # Sidebar — logo (rendered once, before tabs)
 # ---------------------------------------------------------------------------
 
