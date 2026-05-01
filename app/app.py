@@ -363,6 +363,16 @@ def _inject_css() -> None:
 
 _inject_css()
 
+st.markdown("""
+<style>
+@media (prefers-color-scheme: dark) {
+    [data-baseweb="select"] * { color: #ffffff !important; }
+    [data-baseweb="popover"] * { color: #ffffff !important; }
+    [data-baseweb="menu"] * { color: #ffffff !important; }
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ---------------------------------------------------------------------------
 # Page header banner
 # ---------------------------------------------------------------------------
@@ -743,33 +753,23 @@ with tab2:
     st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
 
     # ── Branch Health Overview ───────────────────────────────────────────
-    # The selectbox above renders before this click handler runs.
-    # A row click sets session_state["copilot_branch"] here and triggers a
-    # second rerun, at which point the selectbox reflects the clicked branch.
     st.markdown("""
     <div class="mcd-section-header">
         <span class="mcd-section-icon">📊</span>
         <div>
             <div class="mcd-section-title">Branch Health Overview</div>
-            <div class="mcd-section-sub">Click any row to load that branch in the Co-Pilot below.</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    health_df    = _build_health_table(df)
-    health_event = st.dataframe(
+    st.caption("👆 Use the branch dropdown below to select a branch and generate insights.")
+
+    health_df = _build_health_table(df)
+    st.dataframe(
         health_df,
         use_container_width=True,
         hide_index=True,
-        on_select="rerun",
-        selection_mode="single-row",
     )
-
-    if health_event.selection.rows:
-        clicked_street = health_df.iloc[health_event.selection.rows[0]]["Branch"]
-        if st.session_state.get("copilot_branch") != clicked_street:
-            st.session_state["copilot_branch"] = clicked_street
-            st.rerun()
 
     st.markdown('<hr class="mcd-divider">', unsafe_allow_html=True)
 
